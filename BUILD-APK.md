@@ -2,9 +2,9 @@
 
 This project is prepared as a Capacitor Android app. The web app remains a normal Vite/React project, and GitHub Actions can build the APK in the cloud, so Android Studio is not required on your computer.
 
-## What's new in v1.5
+## What's new in v1.5.3
 
-Star-2 + thinking, tables, compressed image/file attachments, voice, token-saving history and code-edit patches. The workflow now runs `scripts/patch-android.mjs`, which adds the microphone permission and sets version 1.5. See `README.md`.
+Star-2 + thinking, tables, compressed image/file attachments, voice, token-saving history and code-edit patches. The workflow runs `scripts/patch-android.mjs` after Capacitor sync, adds Android microphone/audio permissions, and sets versionName `1.5.3` plus versionCode `153`. The three-dot menu no longer alters chat layout, and menu/message animations respect reduced-motion settings. See `README.md`.
 
 ## What was changed (v1.0)
 
@@ -28,7 +28,7 @@ Star-2 + thinking, tables, compressed image/file attachments, voice, token-savin
 5. Select **Build ATLAS AI APK**.
 6. Click **Run workflow**.
 7. Wait for the workflow to finish.
-8. Open the completed workflow run and download the artifact named **ATLAS-AI-v1.5-debug-apk**.
+8. Open the completed workflow run and download the artifact named **ATLAS-AI-v1.5.3-debug-apk**.
 9. Extract the artifact and install `app-debug.apk` on your Android phone.
 
 The workflow installs the Java/Android build environment in the cloud, builds the Vite app, creates the Capacitor Android project, generates the app icon from `assets/logo.png`, and runs Gradle to produce the APK.

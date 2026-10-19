@@ -1,8 +1,8 @@
-# ATLAS AI — v1.5 (Android / Capacitor)
+# ATLAS AI — v1.5.3 (Android / Capacitor)
 
 اپ اندروید ATLAS AI (React + Vite + Capacitor). نسخه‌ی ۱.۵ قابلیت‌های سایت (`atlas_ai-site-V4`) را به اپ آورده است.
 
-## تازه‌های v1.5
+## تازه‌های v1.5.3
 
 | قابلیت | توضیح |
 | --- | --- |
@@ -16,8 +16,8 @@
 
 ## ساخت APK (بدون Android Studio)
 
-مثل قبل: ریپازیتوری ← Actions ← **Build ATLAS AI APK** ← Run workflow ← دانلود artifact با نام `ATLAS-AI-v1.5-debug-apk`.
-یک مرحله‌ی جدید (`scripts/patch-android.mjs`) خودکار مجوز میکروفون را به پروژه‌ی اندروید اضافه می‌کند و نسخه را 1.5 (versionCode 15) می‌گذارد.
+ریپازیتوری ← Actions ← **Build ATLAS AI APK** ← Run workflow ← دانلود artifact با نام `ATLAS-AI-v1.5.3-debug-apk`.
+اسکریپت `scripts/patch-android.mjs` پس از همگام‌سازی Capacitor اجرا می‌شود، مجوزهای ضبط/تنظیم صوت را به AndroidManifest اضافه می‌کند و نسخه را روی `1.5.3` با `versionCode 153` می‌گذارد. منوی سه‌نقطه با اصلاح موقعیت CSS از جریان چیدمان خارج شده است و انیمیشن‌های منو و پیام‌ها اضافه شده‌اند. فایل APK در artifact با نام `ATLAS-AI-v1.5.3-debug-apk` قرار می‌گیرد.
 
 ## تنظیم سمت سرور (Worker) — برای صوت
 
@@ -50,6 +50,8 @@ src/lib/save.ts             ذخیره‌ی فایل (وب و اندروید)
 ```
 
 ## English summary
+
+Version 1.5.3 fixes the three-dot menu layout, runs the Android microphone-permission patch during APK builds, improves microphone error handling, adds menu/message animations with reduced-motion support, and aligns app version metadata to 1.5.3.
 
 v1.5 brings the website features to the Android app: Star-2 with a Thinking toggle, tables/links/headings, compressed image & file attachments (1024 px JPEG 0.7, minified text), a voice section (record → transcript + reply + audio), token-saving history, SEARCH/REPLACE code edits with save/share, and a smoother streaming UI. See the Persian notes above for build and Worker details.
 
