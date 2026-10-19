@@ -2,59 +2,78 @@ name: Build ATLAS AI APK
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'assets/**'
+      - 'package.json'
+      - 'capacitor.config.ts'
+      - 'vite.config.ts'
+      - '.github/workflows/build-apk.yml'
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
+          cache: 'npm'
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
 
-      - name: Install dependencies
+      - name: Install npm dependencies
         run: npm ci
 
-      - name: Build web app
+      - name: Build web app (Vite)
         run: npm run build
 
-      - name: Add Android platform
-        run: npx cap add android
+      - name: Add Android platform (if missing)
+        run: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          else
+            echo "android/ already exists — skipping cap add"
+          fi
 
-      - name: Generate Android assets
-        run: >-
-          npx @capacitor/assets generate --android
-          --iconBackgroundColor '#090b14'
-          --iconBackgroundColorDark '#090b14'
-          --splashBackgroundColor '#090b14'
-          --splashBackgroundColorDark '#090b14'
+      - name: Generate app icons and splash screens
+        run: |
+          npx @capacitor/assets generate --android \
+            --iconBackgroundColor '#090b14' \
+            --iconBackgroundColorDark '#090b14' \
+            --splashBackgroundColor '#090b14' \
+            --splashBackgroundColorDark '#090b14'
 
-      - name: Sync Capacitor
+      - name: Sync Capacitor with Android project
         run: npx cap sync android
 
       - name: Build debug APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: ATLAS-AI-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+          retention-days: 30
