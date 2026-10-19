@@ -9,6 +9,8 @@ on:
       - 'public/**'
       - 'assets/**'
       - 'package.json'
+      - 'package-lock.json'
+      - 'scripts/**'
       - 'capacitor.config.ts'
       - 'vite.config.ts'
       - '.github/workflows/build-apk.yml'
@@ -64,6 +66,9 @@ jobs:
       - name: Sync Capacitor with Android project
         run: npx cap sync android
 
+      - name: Add microphone permission and set app version
+        run: node scripts/patch-android.mjs
+
       - name: Build debug APK
         working-directory: android
         run: |
@@ -73,7 +78,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ATLAS-AI-debug-apk
+          name: ATLAS-AI-v1.5.3-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30

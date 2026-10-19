@@ -21,14 +21,26 @@ export async function startRecording(onAutoStop: () => void): Promise<Recorder> 
   if (!voiceSupported()) throw new VoiceError('unsupported');
   let stream: MediaStream;
   try { stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } }); }
-  catch { throw new VoiceError('denied'); }
+  catch (error) {
+    const name = error instanceof DOMException ? error.name : '';
+    const detail = error instanceof Error ? error.message : '';
+    if (['NotAllowedError', 'PermissionDeniedError', 'SecurityError'].includes(name)) throw new VoiceError('denied', detail);
+    if (['NotFoundError', 'DevicesNotFoundError'].includes(name)) throw new VoiceError('unsupported', detail);
+    throw new VoiceError('failed', detail);
+  }
   const mime = pickMime();
   const chunks: Blob[] = [];
-  const recorder = new MediaRecorder(stream, { ...(mime ? { mimeType: mime } : {}), audioBitsPerSecond: 24_000 });
-  recorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
   const release = () => stream.getTracks().forEach((t) => t.stop());
+  let recorder: MediaRecorder;
+  try {
+    recorder = new MediaRecorder(stream, { ...(mime ? { mimeType: mime } : {}), audioBitsPerSecond: 24_000 });
+    recorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+    recorder.start();
+  } catch (error) {
+    release();
+    throw new VoiceError('failed', error instanceof Error ? error.message : '');
+  }
   const timer = window.setTimeout(onAutoStop, VOICE_MAX_SECONDS * 1000);
-  recorder.start();
   return {
     stop: () => new Promise((resolve) => {
       window.clearTimeout(timer);

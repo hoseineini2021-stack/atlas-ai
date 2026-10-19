@@ -142,9 +142,19 @@ textarea {
 }
 
 .glass-menu {
-  position: relative;
+  /* Keep position utilities (absolute) effective; relative here caused the menu to reflow the chat. */
   z-index: 50;
   border-radius: 1.1rem;
+}
+
+.menu-pop-in {
+  animation: menu-pop-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transform-origin: top;
+}
+
+@keyframes menu-pop-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .glass-drawer {
@@ -194,6 +204,7 @@ textarea {
 }
 
 .message-bubble {
+  animation: message-enter 240ms ease-out both;
   overflow-wrap: anywhere;
   border-radius: 1.25rem;
   padding: 0.8rem 1rem;
@@ -313,6 +324,25 @@ textarea {
 .dark .glass-input {
   border-color: rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.06);
+}
+
+@keyframes message-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.icon-button:active,
+.send-button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @media (max-width: 639px) {

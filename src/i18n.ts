@@ -30,7 +30,7 @@ const en = {
   thinking: 'Thinking…', thinkToggle: 'Deep thinking', thinkHint: 'Star-2 reasons before answering (slower, more accurate).',
   // v1.5 — voice
   voiceMessage: 'Voice message', recording: 'Recording…', sendVoice: 'Send voice message', cancelRecording: 'Cancel recording',
-  micDenied: 'Microphone access was denied. Allow it in your phone’s app settings.', micUnsupported: 'Voice recording isn’t supported on this device.',
+  micDenied: 'Microphone access was denied. Allow it in your phone’s app settings.', micUnsupported: 'Voice recording isn’t supported on this device.', micFailed: 'Could not start the microphone: ',
   voiceTooShort: 'The recording was too short. Hold on a little longer and try again.', voiceProcessing: 'Listening…',
   voiceFailed: 'The voice request failed: ', playReply: 'Play voice reply', stopReply: 'Stop voice',
   autoPlay: 'Play voice replies automatically', autoPlayHint: 'Spoken replies start as soon as they arrive.', voiceSection: 'Voice',
@@ -71,7 +71,7 @@ const fa: Strings = {
   attachWait: 'لطفاً صبر کنید تا پیوست‌ها آماده شوند.', tokens: 'توکن', truncatedFile: 'کوتاه‌شده', imageWord: 'تصویر',
   thinking: 'در حال فکر کردن…', thinkToggle: 'تفکر عمیق', thinkHint: 'Star-2 پیش از پاسخ استدلال می‌کند (کندتر، دقیق‌تر).',
   voiceMessage: 'پیام صوتی', recording: 'در حال ضبط…', sendVoice: 'ارسال پیام صوتی', cancelRecording: 'لغو ضبط',
-  micDenied: 'دسترسی به میکروفون داده نشد. آن را در تنظیمات برنامه‌ی گوشی مجاز کنید.', micUnsupported: 'ضبط صدا در این دستگاه پشتیبانی نمی‌شود.',
+  micDenied: 'دسترسی به میکروفون داده نشد. آن را در تنظیمات برنامه‌ی گوشی مجاز کنید.', micUnsupported: 'ضبط صدا در این دستگاه پشتیبانی نمی‌شود.', micFailed: 'شروع میکروفون ناموفق بود: ',
   voiceTooShort: 'ضبط خیلی کوتاه بود. کمی طولانی‌تر صحبت کنید و دوباره امتحان کنید.', voiceProcessing: 'در حال گوش دادن…',
   voiceFailed: 'درخواست صوتی ناموفق بود: ', playReply: 'پخش پاسخ صوتی', stopReply: 'توقف صدا',
   autoPlay: 'پخش خودکار پاسخ صوتی', autoPlayHint: 'پاسخ گفتاری به‌محض رسیدن پخش می‌شود.', voiceSection: 'صدا',
