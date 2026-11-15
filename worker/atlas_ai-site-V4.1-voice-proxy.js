@@ -193,7 +193,24 @@ async function proxyToBotServer(env, path, request) {
 
   const init = { method: request.method, headers: upstreamHeaders };
   if (request.method === 'POST') {
-    init.body = await request.text();
+    const rawBody = await request.text();
+    if (path === '/v1/chat/completions') {
+      let parsed;
+      try { parsed = JSON.parse(rawBody); } catch { return errorResponse('Invalid JSON body', 400); }
+      const allowed = new Set(['ai-3-flash', 'star-2']);
+      const requested = String(parsed.model || '').toLowerCase();
+      if (!allowed.has(requested)) {
+        return errorResponse('Unsupported model. Available models: Ai-3-flash, STAR-2.', 400);
+      }
+      if (requested === 'ai-3-flash') parsed.model = 'Ai-3-flash';
+      if (requested === 'star-2') parsed.model = 'STAR-2';
+      if (parsed.ThinkAtlas && requested !== 'star-2') {
+        return errorResponse('ThinkAtlas is available only with STAR-2.', 400);
+      }
+      init.body = JSON.stringify(parsed);
+    } else {
+      init.body = rawBody;
+    }
   }
 
   // تایم‌اوت سمت Worker: کمی بیشتر از سقف تایم‌اوت دینامیک پایتون (۲۸۰ ثانیه) تا
@@ -295,7 +312,7 @@ async function handleAiChat(request, env) {
     return errorResponse('Missing modelKey or messages', 400);
   }
 
-  // نگاشت نام مدل داخل UI سایت (ai2/ai3/star1) به نام واقعی مدل که سرور بات/ربات
+  // نگاشت نام مدل داخل UI سایت (ai3flash/star2) به نام واقعی مدل که سرور بات/ربات
   // (atlas_bot.py روی byternet.eu.pythonanywhere.com) انتظارش رو داره
   const MODEL_NAME_MAP = { ai3flash: 'Ai-3-flash', star2: 'STAR-2' };
   const realModelName = MODEL_NAME_MAP[modelKey];
@@ -1132,7 +1149,7 @@ const HTML_PAGE = String.raw`<!DOCTYPE html>
   <div id="sidebar" class="glass">
     <div class="brand">
       <div class="brand-mark">ATLAS<span> AI</span></div>
-      <div class="brand-sub" data-i18n="brandSub">چت با چهار مدل زبانی</div>
+      <div class="brand-sub" data-i18n="brandSub">چت با دو مدل تخصصی</div>
     </div>
     <button id="new-chat-btn" data-i18n="newChat">+ گفتگوی تازه</button>
     <div id="chat-list"></div>
@@ -1170,8 +1187,8 @@ const HTML_PAGE = String.raw`<!DOCTYPE html>
 
     <div id="messages">
       <div id="empty-state">
-        <h1 data-i18n="emptyTitle">با یکی از چهار مدل شروع کن</h1>
-        <p data-i18n="emptyDesc">مدل مورد نظرت رو از بالا انتخاب کن و چت رو شروع کن. کلیدها و تنظیمات مدل‌ها روی سرور هستن.</p>
+        <h1 data-i18n="emptyTitle">با یکی از دو مدل شروع کن</h1>
+        <p data-i18n="emptyDesc">Ai-3-flash برای پاسخ سریع و STAR-2 برای کدنویسی مدرن و تحلیل عمیق طراحی شده‌اند.</p>
       </div>
     </div>
 
@@ -1318,7 +1335,7 @@ const HTML_PAGE = String.raw`<!DOCTYPE html>
       newChat: '+ New chat',
       signOut: 'Sign out',
       apiSettings: 'API Settings',
-      emptyTitle: 'Start with one of the four models',
+      emptyTitle: 'Start with one of two models',
       emptyDesc: 'Pick a model from above and start chatting. Keys and model settings live on the server.',
       composerPlaceholder: 'Write your message…',
       send: 'Send',
