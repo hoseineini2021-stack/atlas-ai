@@ -176,6 +176,14 @@ function App() {
     const userMessage: ChatMessage = { id: editId ?? makeId(), role: 'user', content: text, ...(attachments.length ? { attachments } : {}) };
     const seed = editIndex >= 0 ? list.slice(0, editIndex) : regenerate && lastUserIndex >= 0 ? list.slice(0, lastUserIndex + 1) : list;
     const apiMessages = buildRequestMessages([...seed, ...(regenerate ? [] : [userMessage])], tokenSaver, isWelcome);
+    // The browser knows the user's actual timezone; provide a fresh local clock so time/date
+    // questions never need web search and do not rely on the server's timezone.
+    const deviceTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'unknown';
+    const deviceLocalNow = new Date().toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'long' });
+    const localClockMessage = { role: 'system' as const, content: `User device local date/time: ${deviceLocalNow}. Timezone: ${deviceTimeZone}. For questions about the current time/date, answer directly from this runtime value and do not search the web. This is the device timezone, not an assumed server timezone.` };
+    const requestMessages = apiMessages.length && apiMessages[0].role === 'system'
+      ? [apiMessages[0], localClockMessage, ...apiMessages.slice(1)]
+      : [localClockMessage, ...apiMessages];
 
     const controller = new AbortController(); controllerRef.current = controller;
     setSending(true); setInput(''); setNotice(null); setEditingId(null); setPending([]); stopPlayback(); setPlayingId(null);
@@ -190,7 +198,7 @@ function App() {
     const flush = () => { timer = undefined; updateMessage(conversationId, assistantId, (m) => ({ ...m, content: shown, thinking: false })); };
     try {
       const full = await requestChat({
-        apiKey: apiKey.trim(), model: modelKey, messages: apiMessages, stream: streamEnabled, think: canThink && think, signal: controller.signal,
+        apiKey: apiKey.trim(), model: modelKey, messages: requestMessages, stream: streamEnabled, think: canThink && think, signal: controller.signal,
         onDelta: (delta) => { shown += delta; if (timer === undefined) timer = window.setTimeout(flush, 50); },
         onThinking: () => updateMessage(conversationId, assistantId, (m) => (m.thinking || m.content ? m : { ...m, thinking: true })),
       });
