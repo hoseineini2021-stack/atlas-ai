@@ -247,6 +247,17 @@ async function proxyToBotServer(env, path, request) {
   }
 
   const text = await upstreamRes.text();
+  if (path === '/v1/models' && upstreamRes.ok) {
+    try {
+      const payload = JSON.parse(text);
+      if (Array.isArray(payload.data)) {
+        payload.data = payload.data.filter((item) => ['ai-3-flash', 'star-2'].includes(String(item.id || '').toLowerCase()));
+      }
+      return jsonResponse(payload, upstreamRes.status);
+    } catch {
+      return errorResponse('Invalid model list returned by upstream API', 502);
+    }
+  }
   return new Response(text, {
     status: upstreamRes.status,
     headers: { 'Content-Type': upstreamContentType || 'application/json; charset=utf-8', ...CORS_HEADERS },
