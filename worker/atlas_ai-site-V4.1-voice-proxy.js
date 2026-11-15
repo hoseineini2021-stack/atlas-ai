@@ -207,6 +207,12 @@ async function proxyToBotServer(env, path, request) {
       if (parsed.ThinkAtlas && requested !== 'star-2') {
         return errorResponse('ThinkAtlas is available only with STAR-2.', 400);
       }
+      const modelInstruction = requested === 'star-2'
+        ? 'For software engineering and coding, prioritize modern, maintainable Python and JavaScript/TypeScript. Use idiomatic current stable language features, secure defaults, clear architecture, practical error handling, and tests. Avoid deprecated APIs and insecure shortcuts. Explain important trade-offs briefly and provide complete runnable code when asked. For debugging, identify the root cause before proposing the smallest reliable fix.'
+        : 'You are the fast-response model. Prioritize low latency, concise direct answers, and efficient tool selection while preserving factual accuracy. Avoid unnecessary preamble.';
+      if (Array.isArray(parsed.messages)) {
+        parsed.messages = [{ role: 'system', content: modelInstruction }, ...parsed.messages];
+      }
       init.body = JSON.stringify(parsed);
     } else {
       init.body = rawBody;
