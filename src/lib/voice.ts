@@ -53,8 +53,8 @@ export async function startRecording(onAutoStop: () => void): Promise<Recorder> 
 }
 
 // Model names the voice endpoints understand (same mapping as the website's worker).
-const VOICE_MODEL: Record<string, string> = { 'ai-2': 'Ai-2', 'ai-3': 'Ai-3', 'star-1': 'STAR-1', 'star-2': 'STAR-1' };
-const SITE_KEY: Record<string, string> = { 'ai-2': 'ai2', 'ai-3': 'ai3', 'star-1': 'star1', 'star-2': 'star2' };
+const VOICE_MODEL: Record<string, string> = { 'ai-3-flash': 'Ai-3-flash', 'star-2': 'STAR-2' };
+const SITE_KEY: Record<string, string> = { 'ai-3-flash': 'ai3flash', 'star-2': 'star2' };
 
 export type VoiceResult = { transcript: string; reply: string; audioUrl?: string };
 
@@ -84,8 +84,8 @@ export async function sendVoice(req: VoiceRequest): Promise<VoiceResult> {
     return form;
   };
   // 1) the public endpoint with the user's own key; 2) the website endpoint if it is missing / not allowed.
-  let res = await post(VOICE_URL, build(['model', VOICE_MODEL[req.model] ?? 'Ai-2']), req.apiKey, req.signal);
-  if ([401, 403, 404, 405].includes(res.status)) res = await post(VOICE_URL_FALLBACK, build(['modelKey', SITE_KEY[req.model] ?? 'ai2']), null, req.signal);
+  let res = await post(VOICE_URL, build(['model', VOICE_MODEL[req.model] ?? 'Ai-3-flash']), req.apiKey, req.signal);
+  if ([401, 403, 404, 405].includes(res.status)) res = await post(VOICE_URL_FALLBACK, build(['modelKey', SITE_KEY[req.model] ?? 'ai3flash']), null, req.signal);
   if (!res.ok) throw new VoiceError('failed', await readError(res));
   const data = await res.json() as { transcript?: string; reply?: string; audio_base64?: string; audio_mime?: string; error?: unknown };
   return {
