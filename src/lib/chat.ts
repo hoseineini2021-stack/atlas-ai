@@ -7,7 +7,7 @@ export class ChatError extends Error {
 
 type Options = {
   apiKey: string;
-  model: string; // e.g. "star-2"
+  model: string;
   messages: ApiMessage[];
   stream: boolean;
   think: boolean;
@@ -29,10 +29,9 @@ async function errorDetail(response: Response) {
   } catch { return ''; }
 }
 
-/** One request to the Atlas API. Streams text through onDelta and returns the full reply. */
+/** One request to Atlas. A broken/incomplete SSE stream is surfaced instead of silently accepted as a complete answer. */
 async function attempt(opts: Options, stream: boolean): Promise<string> {
   const body: Record<string, unknown> = { model: opts.model, messages: opts.messages, stream };
-  // Only Star-2 can think; the flag is sent explicitly so the server never turns it on by default.
   if (opts.model === 'star-2') body.ThinkAtlas = opts.think;
   const response = await fetch(API_URL, {
     method: 'POST',
@@ -42,42 +41,74 @@ async function attempt(opts: Options, stream: boolean): Promise<string> {
   });
   if (!response.ok) throw response.status === 401 ? new ChatError('invalidKey', 401) : new ChatError('http', response.status, await errorDetail(response));
 
-  const isSse = (response.headers.get('Content-Type') || '').includes('text/event-stream');
+  const isSse = (response.headers.get('Content-Type') || '').toLowerCase().includes('text/event-stream');
   if (!stream || !isSse) {
-    // Some paths (e.g. image requests) answer with plain JSON even when streaming was requested.
     const text = extractText(await response.json());
     if (text) opts.onDelta(text);
     return text;
   }
   if (!response.body) throw new ChatError('noStream');
 
-  const reader = response.body.getReader(); const decoder = new TextDecoder();
-  let buffer = ''; let full = ''; let pendingEvent = '';
-  const handleLine = (rawLine: string) => {
-    const line = rawLine.trim();
-    if (!line || line.startsWith(':')) return;
-    if (line.startsWith('event:')) { pendingEvent = line.slice(6).trim(); return; }
-    if (!line.startsWith('data:')) return;
-    const data = line.slice(5).trim();
-    const event = pendingEvent; pendingEvent = '';
-    if (data === '[DONE]') return;
-    try {
-      const json = JSON.parse(data);
-      if (event === 'atlas_thinking') { opts.onThinking(); return; }
-      const delta = extractText(json);
-      if (delta) { full += delta; opts.onDelta(delta); }
-    } catch { /* incomplete record */ }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let full = '';
+  let eventName = '';
+  let dataLines: string[] = [];
+  let sawDone = false;
+  let sawFinish = false;
+  let streamError = '';
+
+  const dispatch = () => {
+    if (!dataLines.length) { eventName = ''; return; }
+    const data = dataLines.join('\n').trim();
+    const event = eventName;
+    dataLines = [];
+    eventName = '';
+    if (data === '[DONE]') { sawDone = true; return; }
+    let payload: any;
+    try { payload = JSON.parse(data); }
+    catch { streamError = 'The server sent malformed streaming data.'; return; }
+    if (event === 'atlas_thinking') { opts.onThinking(); return; }
+    if (payload?.error) {
+      const error = payload.error;
+      streamError = typeof error === 'string' ? error : (error.message || 'The model stream returned an error.');
+      return;
+    }
+    const choice = payload?.choices?.[0];
+    if (choice?.finish_reason) sawFinish = true;
+    const delta = extractText(payload);
+    if (delta) { full += delta; opts.onDelta(delta); }
   };
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n'); buffer = lines.pop() ?? '';
-    lines.forEach(handleLine);
+
+  const consumeLine = (line: string) => {
+    if (line === '') { dispatch(); return; }
+    if (line.startsWith(':')) return; // SSE comment/heartbeat
+    if (line.startsWith('event:')) { eventName = line.slice(6).trim(); return; }
+    if (line.startsWith('data:')) { dataLines.push(line.slice(5).replace(/^ /, '')); return; }
+  };
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split(/\r?\n/);
+      buffer = lines.pop() ?? '';
+      for (const line of lines) consumeLine(line);
+      if (streamError) throw new ChatError('network', 0, streamError);
+    }
+    buffer += decoder.decode();
+    if (buffer) consumeLine(buffer);
+    dispatch();
+    if (streamError) throw new ChatError('network', 0, streamError);
+    if (!sawDone && !sawFinish) {
+      throw new ChatError('network', 0, 'The stream ended before a completion event. The displayed text is only a partial answer.');
+    }
+    return full;
+  } finally {
+    reader.releaseLock();
   }
-  if (buffer.trim()) handleLine(buffer);
-  if (!full && buffer.trim().startsWith('{')) { try { const text = extractText(JSON.parse(buffer)); if (text) { full = text; opts.onDelta(text); } } catch { /* ignore */ } }
-  return full;
 }
 
 export async function requestChat(opts: Options): Promise<string> {
@@ -88,7 +119,6 @@ export async function requestChat(opts: Options): Promise<string> {
       return await attempt(wrapped, opts.stream && tryNumber === 0);
     } catch (error) {
       if ((error as DOMException).name === 'AbortError' || error instanceof ChatError) throw error;
-      // Network hiccup before anything arrived: retry quietly (non-streaming) like the website does.
       if (received || tryNumber >= 2) throw new ChatError('network');
       await new Promise((resolve) => setTimeout(resolve, 1200));
     }
