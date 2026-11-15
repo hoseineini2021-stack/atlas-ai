@@ -46,11 +46,11 @@ export default {
         return jsonResponse({
           googleClientId: env.GOOGLE_CLIENT_ID || '',
           models: {
-            ai2:   { configured: !!(env.AI2_BASE_URL && env.AI2_MODEL) },
-            ai3:   { configured: !!(env.AI3_BASE_URL && env.AI3_MODEL) },
-            star1: { configured: !!(env.STAR1_BASE_URL && env.STAR1_MODEL) },
+            ai3flash: { configured: !!(env.AI3FLASH_BASE_URL && env.AI3FLASH_MODEL) },
             star2: { configured: !!(env.STAR2_BASE_URL && env.STAR2_MODEL) },
           },
+          availableModels: ['Ai-3-flash', 'STAR-2'],
+          defaultModel: 'Ai-3-flash',
         });
       }
 
@@ -266,9 +266,10 @@ async function handleVoiceChat(request, env) {
   let form;
   try { form = await request.formData(); } catch { return errorResponse('Invalid form data', 400); }
   const modelKey = form.get('modelKey');
-  const MAP = { ai2: 'Ai-2', ai3: 'Ai-3', star1: 'STAR-1', star2: 'STAR-1' };
+  const MAP = { ai3flash: 'Ai-3-flash', star2: 'STAR-2' };
   form.delete('modelKey');
-  form.set('model', MAP[modelKey] || 'Ai-2');
+  if (!MAP[modelKey]) return errorResponse('Unsupported voice model', 400);
+  form.set('model', MAP[modelKey]);
   const controller = new AbortController();
   const tid = setTimeout(() => controller.abort(), 60000);
   try {
@@ -297,7 +298,7 @@ async function handleAiChat(request, env) {
 
   // نگاشت نام مدل داخل UI سایت (ai2/ai3/star1) به نام واقعی مدل که سرور بات/ربات
   // (atlas_bot.py روی byternet.eu.pythonanywhere.com) انتظارش رو داره
-  const MODEL_NAME_MAP = { ai2: 'Ai-2', ai3: 'Ai-3', star1: 'STAR-1', star2: 'STAR-2' };
+  const MODEL_NAME_MAP = { ai3flash: 'Ai-3-flash', star2: 'STAR-2' };
   const realModelName = MODEL_NAME_MAP[modelKey];
   if (!realModelName) {
     return errorResponse(`Unknown model "${modelKey}"`, 400);
@@ -324,7 +325,8 @@ async function handleAiChat(request, env) {
   };
 
   const SITE_FORMAT_PROMPT = 'Site formatting rules: (1) You may use markdown tables (| a | b | with a |---|---| separator row) and markdown links [text](https://url) when useful; the site renders them. (2) When the user asks you to EDIT or FIX code that already exists in this chat (an attached file or code you wrote earlier), do NOT rewrite the whole file. Reply with a short explanation, then for each change output a fenced code block (use the file language) containing one or more blocks exactly in this form:\n<<<<<<< SEARCH\n(exact existing lines to replace, copied verbatim, enough lines to be unique)\n=======\n(new lines)\n>>>>>>> REPLACE\nTo insert, SEARCH the line before the insertion point and include it again in REPLACE. To delete, leave the REPLACE part empty. Order: first the explanation of what you are changing and why, then the SEARCH/REPLACE blocks. Never invent SEARCH text: copy it character for character from the file. The site applies these blocks to the original file and gives the user the full patched file with a download button, so do not paste the whole file yourself unless the user explicitly asks for it or the file is new.';
-  const upstreamMessages = [{ role: 'system', content: SITE_FORMAT_PROMPT }].concat(messages);
+  const MODEL_WORK_PROMPT = realModelName === 'STAR-2' ? ' Modern software engineering focus: prioritize current, maintainable Python and JavaScript/TypeScript. Prefer idiomatic, typed where appropriate, secure, tested, production-ready solutions; use current stable language features and libraries, explain trade-offs briefly, avoid deprecated APIs and insecure patterns. For code changes, inspect context, preserve existing architecture, provide complete runnable examples when requested, and include tests or validation steps.' : ' Ai-3-flash is the fast-response model: prioritize low latency, concise direct answers, and quick tool selection; do not sacrifice factual correctness.';
+  const upstreamMessages = [{ role: 'system', content: SITE_FORMAT_PROMPT + MODEL_WORK_PROMPT }].concat(messages);
 
   const upstreamBody = {
     model: realModelName,
@@ -1153,14 +1155,12 @@ const HTML_PAGE = String.raw`<!DOCTYPE html>
       <button id="theme-btn" title="تم">🎨</button>
       <div id="model-dropdown-wrap">
         <button id="model-dropdown-btn" type="button">
-          <span id="model-dropdown-label">Ai-2</span>
+          <span id="model-dropdown-label">Ai-3-flash</span>
           <span class="model-caret">▾</span>
         </button>
         <div id="model-dropdown-menu" class="hidden">
-          <button class="model-option active" data-model="ai2">Ai-2</button>
-          <button class="model-option" data-model="ai3">Ai-3</button>
-          <button class="model-option" data-model="star1">Star-1</button>
-          <button class="model-option" data-model="star2">Star-2</button>
+          <button class="model-option active" data-model="ai3flash">Ai-3-flash · سریع</button>
+          <button class="model-option" data-model="star2">STAR-2 · کدنویسی و تحلیل عمیق</button>
         </div>
       </div>
       <div id="topbar-actions">
@@ -1263,17 +1263,18 @@ const HTML_PAGE = String.raw`<!DOCTYPE html>
 
   var state = {
     user: null,
-    activeModel: 'ai2',
+    activeModel: 'ai3flash',
     activeChatId: null,
     chats: {}, // id -> {id, title, messages:[{role,content}]}
-    serverModels: { ai2:{configured:false}, ai3:{configured:false}, star1:{configured:false}, star2:{configured:false} },
+    serverModels: { ai3flash:{configured:false}, star2:{configured:false} },
+    thinkAtlasEnabled: false,
     busy: false,
     lang: 'fa',
     theme: 'modern',
     thinkAtlasEnabled: false,
   };
 
-  var MODEL_LABELS = { ai2: 'Ai-2', ai3: 'Ai-3', star1: 'Star-1', star2: 'Star-2' };
+  var MODEL_LABELS = { ai3flash: 'Ai-3-flash', star2: 'STAR-2' };
 
   // ---------- زبان / Language ----------
   var I18N = {
@@ -3135,12 +3136,12 @@ const API_DOCS_HTML_PAGE = String.raw`<!DOCTYPE html>
     </table>
     <table class="params">
       <tr><th data-i18n="tblField">فیلد بدنه</th><th data-i18n="tblDesc">توضیح</th></tr>
-      <tr><td>model</td><td data-i18n="fieldModel">یکی از: Ai-2 ، Ai-3 ، STAR-1 ، STAR-2 (اگه کلیدت دسترسی همه‌ی مدل‌ها رو داشته باشه)</td></tr>
+      <tr><td>model</td><td data-i18n="fieldModel">یکی از: Ai-3-flash ، STAR-2 (اگه کلیدت دسترسی همه‌ی مدل‌ها رو داشته باشه)</td></tr>
       <tr><td>messages</td><td data-i18n="fieldMessages">آرایه‌ای از پیام‌ها به فرمت <code class="inline">{role, content}</code> (role: user یا assistant)</td></tr>
       <tr><td>stream</td><td data-i18n="fieldStream">true/false — پاسخ استریم (SSE) یا یک‌جا (پیش‌فرض: false)</td></tr>
-      <tr><td>ThinkAtlas</td><td data-i18n="fieldThinkAtlas">برای STAR-2 فعال شود؛ ThinkAtlas به‌صورت داخلی فکر می‌کند و فقط پاسخ نهایی را برمی‌گرداند.</td></tr>
+      <tr><td>ThinkAtlas</td><td data-i18n="fieldThinkAtlas">فقط برای STAR-2؛ ThinkAtlas فرایند استدلال داخلی را فعال می‌کند و متن استدلال خصوصی به خروجی اضافه نمی‌شود.</td></tr>
     </table>
-    <p class="hint">STAR-2 با ThinkAtlas ابتدا به‌صورت داخلی مسئله را بررسی و اعتبارسنجی می‌کند و سپس فقط پاسخ نهایی را برمی‌گرداند.</p>
+    <p class="hint">STAR-2 همراه ThinkAtlas برای تحلیل چندمرحله‌ای، بررسی فرض‌ها، طراحی راه‌حل و کدنویسی پیچیده مناسب است.</p>
   </div>
 
   <div class="card glass">
@@ -3160,7 +3161,7 @@ response = requests.<span class="tok-fn">post</span>(
         <span class="tok-str">"Content-Type"</span>: <span class="tok-str">"application/json"</span>,
     },
     json={
-        <span class="tok-str">"model"</span>: <span class="tok-str">"Ai-2"</span>,
+        <span class="tok-str">"model"</span>: <span class="tok-str">"Ai-3-flash"</span>,
         <span class="tok-str">"messages"</span>: [
             {<span class="tok-str">"role"</span>: <span class="tok-str">"user"</span>, <span class="tok-str">"content"</span>: <span class="tok-str">"hello"</span>}
         ],
@@ -3219,7 +3220,7 @@ response = client.chat.completions.<span class="tok-fn">create</span>(
       fieldModel: 'یکی از: Ai-2 ، Ai-3 ، STAR-1 ، STAR-2 (اگه کلیدت دسترسی همه‌ی مدل‌ها رو داشته باشه)',
       fieldMessages: 'آرایه‌ای از پیام‌ها به فرمت <code class="inline">{role, content}</code> (role: user یا assistant)',
       fieldStream: 'true/false — پاسخ استریم (SSE) یا یک‌جا (پیش‌فرض: false)',
-      fieldThinkAtlas: 'برای STAR-2 فعال شود؛ ThinkAtlas به‌صورت داخلی فکر می‌کند و فقط پاسخ نهایی را برمی‌گرداند.',
+      fieldThinkAtlas: 'فقط برای STAR-2؛ ThinkAtlas فرایند استدلال داخلی را فعال می‌کند و متن استدلال خصوصی به خروجی اضافه نمی‌شود.',
       step4Title: 'نمونه‌کد پایتون (ارسال «سلام» و دریافت پاسخ)',
       step4Body: 'نمونه‌ی کامل زیر رو کپی کن، کلید API خودت رو جایگزین کن، و اجرا کن — باید یک پاسخ متنی از مدل (مثلاً پاسخ به «Hello») دریافت کنی:',
       c1: '# کلید API که از ربات تلگرام گرفتی',
@@ -3243,10 +3244,10 @@ response = client.chat.completions.<span class="tok-fn">create</span>(
       step3Title: 'Headers & parameters',
       tblHeader: 'Header', tblValue: 'Value', tblField: 'Body field', tblDesc: 'Description',
       yourApiKey: 'your API key',
-      fieldModel: 'One of: Ai-2, Ai-3, STAR-1, STAR-2 (if your key has access to all models)',
+      fieldModel: 'One of: Ai-3-flash, STAR-2 (if your key has access to all models)',
       fieldMessages: 'Array of messages in <code class="inline">{role, content}</code> format (role: user or assistant)',
       fieldStream: 'true/false — streamed (SSE) or single response (default: false)',
-      fieldThinkAtlas: 'For STAR-2, enable ThinkAtlas to reason internally before the final answer. The private reasoning is never returned.',
+      fieldThinkAtlas: 'STAR-2 only: enable ThinkAtlas internal reasoning; private reasoning is never returned.',
       step4Title: 'Python example (send "hello", get a reply)',
       step4Body: 'Copy the full example below, replace it with your own API key, and run it — you should get a text reply from the model (e.g. a reply to "Hello"):',
       c1: '# API key you got from the Telegram bot',
