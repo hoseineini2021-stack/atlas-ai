@@ -131,6 +131,7 @@ function App() {
       if (error.code === 'invalidKey') return copy.invalidKey;
       if (error.code === 'http') return `${copy.responseError(error.status)}${error.detail ? ` ${error.detail}` : ''}`;
       if (error.code === 'noStream') return copy.streamUnavailable;
+      if (error.code === 'network' && error.detail) return error.detail;
       return copy.connectionError;
     }
     return error instanceof Error ? error.message : copy.connectionError;
