@@ -13,6 +13,7 @@ type Options = {
   think: boolean;
   signal: AbortSignal;
   onDelta: (text: string) => void;
+  onReset: () => void;
   onThinking: () => void;
 };
 
@@ -118,7 +119,16 @@ export async function requestChat(opts: Options): Promise<string> {
     try {
       return await attempt(wrapped, opts.stream && tryNumber === 0);
     } catch (error) {
-      if ((error as DOMException).name === 'AbortError' || error instanceof ChatError) throw error;
+      if ((error as DOMException).name === 'AbortError') throw error;
+      if (opts.stream && tryNumber === 0 && error instanceof ChatError && error.code === 'network'
+          && /stream ended before a completion event|partial answer/i.test(error.detail)) {
+        // A dropped SSE connection can leave a visible partial answer. Clear it and
+        // transparently retry once as a normal JSON request to recover the complete reply.
+        opts.onReset();
+        received = false;
+        return await attempt(wrapped, false);
+      }
+      if (error instanceof ChatError) throw error;
       if (received || tryNumber >= 2) throw new ChatError('network');
       await new Promise((resolve) => setTimeout(resolve, 1200));
     }
