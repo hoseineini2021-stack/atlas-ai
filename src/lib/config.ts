@@ -10,7 +10,7 @@ export const VOICE_URL_FALLBACK = `${API_BASE}/voice/chat`;
 
 export const ATLAS_LOGO = '/assets/atlas-logo.png';
 
-export const AVAILABLE_MODELS = ['Ai-3-flash', 'Star-2'] as const;
+export const AVAILABLE_MODELS = ['Ai-3-flash', 'STAR-2'] as const;
 export const DEFAULT_MODEL = 'Ai-3-flash';
 export const THINKING_MODEL = 'star-2';
 
