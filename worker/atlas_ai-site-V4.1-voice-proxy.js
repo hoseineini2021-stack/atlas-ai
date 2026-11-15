@@ -1,7 +1,7 @@
 /**
  * AI Chat — Cloudflare Worker
- * - چهار مدل قابل انتخاب: Ai-2 / Ai-3 / Star-1 / Star-2 (فرمت OpenAI: chat/completions)
- * - بدون هیچ system prompt
+ * - دو مدل قابل انتخاب: Ai-3-flash (سریع) و STAR-2 (کدنویسی و تحلیل عمیق)
+ * - راهنمای مدل‌محور برای پاسخ سریع و مهندسی نرم‌افزار مدرن
  * - لاگین با گوگل (Google Identity Services - Sign in with Google)
  * - ذخیره چت‌ها روی Storage API خارجی (api-at-by.byternet.js) از طریق پروکسی داخل همین Worker
  *
@@ -176,8 +176,7 @@ async function proxyDownload(env, id) {
 
 /**
  * کلیدها و تنظیمات مدل‌ها از env (Variables & Secrets در Cloudflare) خونده می‌شه.
- * فرانت فقط نام مدل (ai2/ai3/star1) و پیام‌ها رو می‌فرسته.
- * هیچ system prompt‌ای اضافه نمی‌شود.
+ * فرانت فقط نام مدل (ai3flash/star2) و پیام‌ها رو می‌فرسته.
  */
 // پروکسی مسیرهای عمومی API سازگار با OpenAI (/v1/chat/completions و /v1/models) مستقیماً به
 // سرور بات (atlas_bot.py روی PythonAnywhere). این مسیر برای فراخوانی‌کنندگان خارجی (کسانی که
@@ -1203,19 +1202,11 @@ const HTML_PAGE = String.raw`<!DOCTYPE html>
     <h2 data-i18n="modelStatusTitle">وضعیت مدل‌ها</h2>
     <div id="model-status-list">
       <div class="field-group" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px">
-        <span style="font-size:13px;color:var(--text)">Ai-2</span>
-        <span id="status-ai2" style="font-size:11px" data-i18n="checking">بررسی...</span>
+        <span style="font-size:13px;color:var(--text)">Ai-3-flash · سریع</span>
+        <span id="status-ai3flash" style="font-size:11px" data-i18n="checking">بررسی...</span>
       </div>
       <div class="field-group" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px">
-        <span style="font-size:13px;color:var(--text)">Ai-3</span>
-        <span id="status-ai3" style="font-size:11px" data-i18n="checking">بررسی...</span>
-      </div>
-      <div class="field-group" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px">
-        <span style="font-size:13px;color:var(--text)">Star-1</span>
-        <span id="status-star1" style="font-size:11px" data-i18n="checking">بررسی...</span>
-      </div>
-      <div class="field-group" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px">
-        <span style="font-size:13px;color:var(--text)">Star-2</span>
+        <span style="font-size:13px;color:var(--text)">STAR-2 · کدنویسی و تحلیل عمیق</span>
         <span id="status-star2" style="font-size:11px" data-i18n="checking">بررسی...</span>
       </div>
     </div>
@@ -1279,12 +1270,12 @@ const HTML_PAGE = String.raw`<!DOCTYPE html>
   // ---------- زبان / Language ----------
   var I18N = {
     fa: {
-      brandSub: 'چت با چهار مدل زبانی',
+      brandSub: 'چت با دو مدل تخصصی',
       newChat: '+ گفتگوی تازه',
       signOut: 'خروج از حساب',
       apiSettings: 'تنظیمات API',
-      emptyTitle: 'با یکی از چهار مدل شروع کن',
-      emptyDesc: 'مدل مورد نظرت رو از بالا انتخاب کن و چت رو شروع کن. کلیدها و تنظیمات مدل‌ها روی سرور هستن.',
+      emptyTitle: 'با یکی از دو مدل شروع کن',
+      emptyDesc: 'Ai-3-flash برای پاسخ سریع و STAR-2 برای کدنویسی مدرن و تحلیل عمیق طراحی شده‌اند.',
       composerPlaceholder: 'پیامت رو بنویس…',
       send: 'ارسال',
       modelStatusTitle: 'وضعیت مدل‌ها',
@@ -1323,7 +1314,7 @@ const HTML_PAGE = String.raw`<!DOCTYPE html>
       themeLight: 'روز (روشن)',
     },
     en: {
-      brandSub: 'Chat with four language models',
+      brandSub: 'Chat with two specialized models',
       newChat: '+ New chat',
       signOut: 'Sign out',
       apiSettings: 'API Settings',
@@ -1519,7 +1510,7 @@ const HTML_PAGE = String.raw`<!DOCTYPE html>
     $settingsOverlay.classList.add('hidden');
   });
   function renderModelStatus(){
-    ['ai2','ai3','star1'].forEach(function(m){
+    ['ai3flash','star2'].forEach(function(m){
       var el = document.getElementById('status-'+m);
       if(!el) return;
       var ok = state.serverModels[m] && state.serverModels[m].configured;
@@ -3192,7 +3183,7 @@ client = <span class="tok-fn">OpenAI</span>(
 )
 
 response = client.chat.completions.<span class="tok-fn">create</span>(
-    model=<span class="tok-str">"Ai-2"</span>,
+    model=<span class="tok-str">"Ai-3-flash"</span>,
     messages=[{<span class="tok-str">"role"</span>: <span class="tok-str">"user"</span>, <span class="tok-str">"content"</span>: <span class="tok-str">"hello"</span>}],
 )
 
@@ -3217,7 +3208,7 @@ response = client.chat.completions.<span class="tok-fn">create</span>(
       step3Title: 'هدرها و پارامترها',
       tblHeader: 'هدر', tblValue: 'مقدار', tblField: 'فیلد بدنه', tblDesc: 'توضیح',
       yourApiKey: 'کلید API شما',
-      fieldModel: 'یکی از: Ai-2 ، Ai-3 ، STAR-1 ، STAR-2 (اگه کلیدت دسترسی همه‌ی مدل‌ها رو داشته باشه)',
+      fieldModel: 'یکی از: Ai-3-flash ، STAR-2 (اگه کلیدت دسترسی همه‌ی مدل‌ها رو داشته باشه)',
       fieldMessages: 'آرایه‌ای از پیام‌ها به فرمت <code class="inline">{role, content}</code> (role: user یا assistant)',
       fieldStream: 'true/false — پاسخ استریم (SSE) یا یک‌جا (پیش‌فرض: false)',
       fieldThinkAtlas: 'فقط برای STAR-2؛ ThinkAtlas فرایند استدلال داخلی را فعال می‌کند و متن استدلال خصوصی به خروجی اضافه نمی‌شود.',
