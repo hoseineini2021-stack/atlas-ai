@@ -46,7 +46,7 @@ export default {
         return jsonResponse({
           googleClientId: env.GOOGLE_CLIENT_ID || '',
           models: {
-            ai3flash: { configured: !!(env.AI3FLASH_BASE_URL && env.AI3FLASH_MODEL) },
+            ai3flash: { configured: !!((env.AI3FLASH_BASE_URL && env.AI3FLASH_MODEL) || (env.AI3_BASE_URL && env.AI3_MODEL)) },
             star2: { configured: !!(env.STAR2_BASE_URL && env.STAR2_MODEL) },
           },
           availableModels: ['Ai-3-flash', 'STAR-2'],
