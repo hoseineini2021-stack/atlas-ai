@@ -2553,64 +2553,79 @@ const HTML_PAGE = String.raw`<!DOCTYPE html>
       var decoder = new TextDecoder('utf-8');
       var buffer = '';
       var sawAnySseData = false;
+      var sawDone = false;
+      var sawFinish = false;
+      var pendingEvent = '';
+
+      function processLine(line){
+        line = line.trim();
+        if(!line || line.charAt(0) === ':') return;
+        if(line.indexOf('event:') === 0){
+          pendingEvent = line.slice(6).trim();
+          return;
+        }
+        if(line.indexOf('data:') !== 0) return;
+        sawAnySseData = true;
+        var payload = line.slice(5).trim();
+        if(payload === '[DONE]'){ sawDone = true; return; }
+        var json;
+        try { json = JSON.parse(payload); }
+        catch(e){ throw new Error('پاسخ استریم ناقص یا نامعتبر از سرور دریافت شد.'); }
+        if(pendingEvent === 'atlas_thinking'){
+          showThinkingSummary();
+          pendingEvent = '';
+          return;
+        }
+        pendingEvent = '';
+        if(json && json.error){
+          throw new Error(json.error.message || json.error || 'خطا در تولید پاسخ.');
+        }
+        var delta = '';
+        if(json.choices && json.choices[0]){
+          var choice = json.choices[0];
+          if(choice.finish_reason) sawFinish = true;
+          if(choice.delta && typeof choice.delta.content === 'string'){
+            delta = choice.delta.content;
+          } else if(choice.message && typeof choice.message.content === 'string'){
+            delta = choice.message.content;
+          } else if(typeof choice.text === 'string'){
+            delta = choice.text;
+          }
+        }
+        if(delta){
+          accumulated += delta;
+          updateBubble();
+        }
+      }
 
       function pump(){
         return reader.read().then(function(result){
           if(result.done){
-            // اگه اصلاً event-stream نبود (JSON خام یک‌جا اومد)، سعی کن بافر رو پارس کنی
-            if(!sawAnySseData && buffer.trim()){
-              try{
-                var data = JSON.parse(buffer);
-                accumulated = extractReply(data);
+            buffer += decoder.decode();
+            if(buffer.trim()){
+              processLine(buffer);
+              buffer = '';
+            }
+            if(!sawDone && !sawFinish){
+              if(attempt === 0){
+                accumulated = '';
                 updateBubble();
-              }catch(e){ /* نادیده بگیر، هرچی تا الان جمع شده رو نشون بده */ }
+                return startRequest(1);
+              }
+              throw new Error('جریان پاسخ پیش از تکمیل قطع شد؛ پاسخ ممکن است ناقص باشد.');
             }
             finish();
             return;
           }
           buffer += decoder.decode(result.value, { stream:true });
           var lines = buffer.split('\n');
-          buffer = lines.pop(); // ممکنه خط آخر ناقص باشه، برای دفعه بعد نگه‌دار
-
-          var pendingEvent = '';
-          lines.forEach(function(line){
-            line = line.trim();
-            if(!line) return;
-            if(line.indexOf('event:') === 0){
-              pendingEvent = line.slice(6).trim();
-              return;
-            }
-            if(line.indexOf('data:') !== 0) return;
-            sawAnySseData = true;
-            var payload = line.slice(5).trim();
-            if(payload === '[DONE]') return;
-            try{
-              var json = JSON.parse(payload);
-              if(pendingEvent === 'atlas_thinking'){
-                showThinkingSummary();
-                pendingEvent = '';
-                return;
-              }
-              pendingEvent = '';
-              var delta = '';
-              if(json.choices && json.choices[0]){
-                var choice = json.choices[0];
-                if(choice.delta && typeof choice.delta.content === 'string'){
-                  delta = choice.delta.content;
-                } else if(choice.message && typeof choice.message.content === 'string'){
-                  delta = choice.message.content;
-                } else if(typeof choice.text === 'string'){
-                  delta = choice.text;
-                }
-              }
-              if(delta){
-                accumulated += delta;
-                updateBubble();
-              }
-            }catch(e){ /* خط ناقص یا غیر JSON رو نادیده بگیر */ }
-          });
-
+          buffer = lines.pop() || '';
+          lines.forEach(processLine);
           return pump();
+        });
+      }
+
+      return pump();
         });
       }
 
