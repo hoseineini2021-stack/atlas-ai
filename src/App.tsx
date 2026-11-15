@@ -200,6 +200,7 @@ function App() {
       const full = await requestChat({
         apiKey: apiKey.trim(), model: modelKey, messages: requestMessages, stream: streamEnabled, think: canThink && think, signal: controller.signal,
         onDelta: (delta) => { shown += delta; if (timer === undefined) timer = window.setTimeout(flush, 50); },
+        onReset: () => { shown = ''; if (timer !== undefined) window.clearTimeout(timer); timer = undefined; updateMessage(conversationId, assistantId, (m) => ({ ...m, content: '', status: 'streaming', thinking: false })); },
         onThinking: () => updateMessage(conversationId, assistantId, (m) => (m.thinking || m.content ? m : { ...m, thinking: true })),
       });
       if (timer !== undefined) window.clearTimeout(timer);
