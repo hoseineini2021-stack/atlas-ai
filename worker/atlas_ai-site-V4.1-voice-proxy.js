@@ -1286,7 +1286,6 @@ const HTML_PAGE = String.raw`<!DOCTYPE html>
     activeChatId: null,
     chats: {}, // id -> {id, title, messages:[{role,content}]}
     serverModels: { ai3flash:{configured:false}, star2:{configured:false} },
-    thinkAtlasEnabled: false,
     busy: false,
     lang: 'fa',
     theme: 'modern',
@@ -1347,7 +1346,7 @@ const HTML_PAGE = String.raw`<!DOCTYPE html>
       signOut: 'Sign out',
       apiSettings: 'API Settings',
       emptyTitle: 'Start with one of two models',
-      emptyDesc: 'Pick a model from above and start chatting. Keys and model settings live on the server.',
+      emptyDesc: 'Ai-3-flash is optimized for fast replies; STAR-2 is for modern coding and deeper analysis.',
       composerPlaceholder: 'Write your message…',
       send: 'Send',
       modelStatusTitle: 'Model status',
