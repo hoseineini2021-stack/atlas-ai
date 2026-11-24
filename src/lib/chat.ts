@@ -95,12 +95,17 @@ async function attempt(opts: Options, stream: boolean): Promise<string> {
     if (line.startsWith('data:')) { dataLines.push(line.slice(5).replace(/^ /, '')); return; }
   };
 
+  const abortPromise = new Promise<never>((_, reject) => {
+    if (opts.signal.aborted) reject(new DOMException('Aborted', 'AbortError'));
+    else opts.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+  });
   try {
     while (true) {
+      if (opts.signal.aborted) throw new DOMException('Aborted', 'AbortError');
       let timeoutId: number | undefined;
       const stallTimeout = new Promise<never>((_, reject) => { timeoutId = window.setTimeout(() => reject(new ChatError('network', 0, 'Stream stalled for 60 seconds; retrying without streaming.')), 60_000); });
       let readResult: ReadableStreamReadResult<Uint8Array>;
-      try { readResult = await Promise.race([reader.read(), stallTimeout]); } finally { if (timeoutId !== undefined) window.clearTimeout(timeoutId); }
+      try { readResult = await Promise.race([reader.read(), stallTimeout, abortPromise]; } finally { if (timeoutId !== undefined) window.clearTimeout(timeoutId); }
       const { done, value } = readResult;
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
@@ -117,6 +122,9 @@ async function attempt(opts: Options, stream: boolean): Promise<string> {
       throw new ChatError('network', 0, 'The stream ended before a completion event. The displayed text is only a partial answer.');
     }
     return full;
+  } catch (error) {
+    if (opts.signal.aborted) { try { await reader.cancel(); } catch { /* stream already closed */ } throw new DOMException('Aborted', 'AbortError'); }
+    throw error;
   } finally {
     reader.releaseLock();
   }
@@ -131,9 +139,8 @@ export async function requestChat(opts: Options): Promise<string> {
     } catch (error) {
       if ((error as DOMException).name === 'AbortError') throw error;
       if (opts.stream && tryNumber === 0 && error instanceof ChatError && error.code === 'network'
-          && /stream ended before a completion event|partial answer/i.test(error.detail)) {
-        // A dropped SSE connection can leave a visible partial answer. Clear it and
-        // transparently retry once as a normal JSON request to recover the complete reply.
+          && /stream ended before a completion event|partial answer|stream stalled/i.test(error.detail)) {
+        // A dropped/stalled SSE stream may leave a partial answer. Reset and retry once non-streaming.
         opts.onReset();
         received = false;
         return await attempt(wrapped, false);
