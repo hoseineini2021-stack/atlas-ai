@@ -105,7 +105,7 @@ async function attempt(opts: Options, stream: boolean): Promise<string> {
       let timeoutId: number | undefined;
       const stallTimeout = new Promise<never>((_, reject) => { timeoutId = window.setTimeout(() => reject(new ChatError('network', 0, 'Stream stalled for 60 seconds; retrying without streaming.')), 60_000); });
       let readResult: ReadableStreamReadResult<Uint8Array>;
-      try { readResult = await Promise.race([reader.read(), stallTimeout, abortPromise]; } finally { if (timeoutId !== undefined) window.clearTimeout(timeoutId); }
+      try { readResult = await Promise.race([reader.read(), stallTimeout, abortPromise]); } finally { if (timeoutId !== undefined) window.clearTimeout(timeoutId); }
       const { done, value } = readResult;
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
