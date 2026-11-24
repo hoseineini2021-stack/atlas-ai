@@ -3,8 +3,8 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 
 const manifestPath = 'android/app/src/main/AndroidManifest.xml';
 const gradlePath = 'android/app/build.gradle';
-const VERSION_NAME = '1.5.3';
-const VERSION_CODE = '153';
+const VERSION_NAME = '2.0.2';
+const VERSION_CODE = '202';
 
 if (!existsSync(manifestPath)) { console.error(`${manifestPath} not found — run "npx cap add android" first.`); process.exit(1); }
 
