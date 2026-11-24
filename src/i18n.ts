@@ -14,7 +14,7 @@ const en = {
   responseError: (status: number) => `The request failed with status ${status}.`, noResponse: 'No response was received.',
   streamUnavailable: 'Streaming responses are not available on this connection.', stopped: 'Response stopped.',
   connectionError: 'Could not connect to Atlas.', settingsSaved: 'Settings saved.',
-  appearance: 'Appearance', atlasTheme: 'ATLAS', automatic: 'System', light: 'Light', dark: 'Dark', appearanceHint: 'Choose the ATLAS purple, light, or dark theme.'
+  appearance: 'Appearance', atlasTheme: 'ATLAS', automatic: 'System', light: 'Light', dark: 'Dark', appearanceHint: 'Choose the ATLAS purple, light, or dark theme.',
   language: 'Language', english: 'English', persian: 'فارسی', personalKey: 'Personal Atlas API key',
   keyHint: 'The key is stored only on this device and is not bundled into the app.', apiGuide: 'Atlas API key guide',
   streaming: 'Stream responses', streamingHint: 'Show the response as it arrives.',
