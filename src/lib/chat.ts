@@ -34,12 +34,18 @@ async function errorDetail(response: Response) {
 async function attempt(opts: Options, stream: boolean): Promise<string> {
   const body: Record<string, unknown> = { model: opts.model, messages: opts.messages, stream };
   if (opts.model === 'star-2') body.ThinkAtlas = opts.think;
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${opts.apiKey}` },
-    body: JSON.stringify(body),
-    signal: opts.signal,
-  });
+  // Long prompts and replies may take minutes. Avoid short client timeouts.
+  const requestController = new AbortController();
+  const abortFromCaller = () => requestController.abort(opts.signal.reason);
+  opts.signal.addEventListener('abort', abortFromCaller, { once: true });
+  const requestTimeout = window.setTimeout(() => requestController.abort(new Error('Request timeout')), 300_000);
+  let response: Response;
+  try {
+    response = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${opts.apiKey}` }, body: JSON.stringify(body), signal: requestController.signal });
+  } catch (error) {
+    if (requestController.signal.aborted && !opts.signal.aborted) throw new ChatError('network', 0, 'درخواست پس از ۵ دقیقه متوقف شد؛ لطفاً دوباره تلاش کنید.');
+    throw error;
+  } finally { window.clearTimeout(requestTimeout); opts.signal.removeEventListener('abort', abortFromCaller); }
   if (!response.ok) throw response.status === 401 ? new ChatError('invalidKey', 401) : new ChatError('http', response.status, await errorDetail(response));
 
   const isSse = (response.headers.get('Content-Type') || '').toLowerCase().includes('text/event-stream');
@@ -91,7 +97,11 @@ async function attempt(opts: Options, stream: boolean): Promise<string> {
 
   try {
     while (true) {
-      const { done, value } = await reader.read();
+      let timeoutId: number | undefined;
+      const stallTimeout = new Promise<never>((_, reject) => { timeoutId = window.setTimeout(() => reject(new ChatError('network', 0, 'Stream stalled for 60 seconds; retrying without streaming.')), 60_000); });
+      let readResult: ReadableStreamReadResult<Uint8Array>;
+      try { readResult = await Promise.race([reader.read(), stallTimeout]); } finally { if (timeoutId !== undefined) window.clearTimeout(timeoutId); }
+      const { done, value } = readResult;
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split(/\r?\n/);
