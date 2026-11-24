@@ -34,12 +34,18 @@ async function errorDetail(response: Response) {
 async function attempt(opts: Options, stream: boolean): Promise<string> {
   const body: Record<string, unknown> = { model: opts.model, messages: opts.messages, stream };
   if (opts.model === 'star-2') body.ThinkAtlas = opts.think;
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${opts.apiKey}` },
-    body: JSON.stringify(body),
-    signal: opts.signal,
-  });
+  // Long prompts and replies may take minutes. Avoid short client timeouts.
+  const requestController = new AbortController();
+  const abortFromCaller = () => requestController.abort(opts.signal.reason);
+  opts.signal.addEventListener('abort', abortFromCaller, { once: true });
+  const requestTimeout = window.setTimeout(() => requestController.abort(new Error('Request timeout')), 300_000);
+  let response: Response;
+  try {
+    response = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${opts.apiKey}` }, body: JSON.stringify(body), signal: requestController.signal });
+  } catch (error) {
+    if (requestController.signal.aborted && !opts.signal.aborted) throw new ChatError('network', 0, 'درخواست پس از ۵ دقیقه متوقف شد؛ لطفاً دوباره تلاش کنید.');
+    throw error;
+  } finally { window.clearTimeout(requestTimeout); opts.signal.removeEventListener('abort', abortFromCaller); }
   if (!response.ok) throw response.status === 401 ? new ChatError('invalidKey', 401) : new ChatError('http', response.status, await errorDetail(response));
 
   const isSse = (response.headers.get('Content-Type') || '').toLowerCase().includes('text/event-stream');
@@ -89,9 +95,18 @@ async function attempt(opts: Options, stream: boolean): Promise<string> {
     if (line.startsWith('data:')) { dataLines.push(line.slice(5).replace(/^ /, '')); return; }
   };
 
+  const abortPromise = new Promise<never>((_, reject) => {
+    if (opts.signal.aborted) reject(new DOMException('Aborted', 'AbortError'));
+    else opts.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+  });
   try {
     while (true) {
-      const { done, value } = await reader.read();
+      if (opts.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+      let timeoutId: number | undefined;
+      const stallTimeout = new Promise<never>((_, reject) => { timeoutId = window.setTimeout(() => reject(new ChatError('network', 0, 'Stream stalled for 60 seconds; retrying without streaming.')), 60_000); });
+      let readResult: ReadableStreamReadResult<Uint8Array>;
+      try { readResult = await Promise.race([reader.read(), stallTimeout, abortPromise]); } finally { if (timeoutId !== undefined) window.clearTimeout(timeoutId); }
+      const { done, value } = readResult;
       if (done) break;
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split(/\r?\n/);
@@ -107,6 +122,9 @@ async function attempt(opts: Options, stream: boolean): Promise<string> {
       throw new ChatError('network', 0, 'The stream ended before a completion event. The displayed text is only a partial answer.');
     }
     return full;
+  } catch (error) {
+    if (opts.signal.aborted) { try { await reader.cancel(); } catch { /* stream already closed */ } throw new DOMException('Aborted', 'AbortError'); }
+    throw error;
   } finally {
     reader.releaseLock();
   }
@@ -121,9 +139,8 @@ export async function requestChat(opts: Options): Promise<string> {
     } catch (error) {
       if ((error as DOMException).name === 'AbortError') throw error;
       if (opts.stream && tryNumber === 0 && error instanceof ChatError && error.code === 'network'
-          && /stream ended before a completion event|partial answer/i.test(error.detail)) {
-        // A dropped SSE connection can leave a visible partial answer. Clear it and
-        // transparently retry once as a normal JSON request to recover the complete reply.
+          && /stream ended before a completion event|partial answer|stream stalled/i.test(error.detail)) {
+        // A dropped/stalled SSE stream may leave a partial answer. Reset and retry once non-streaming.
         opts.onReset();
         received = false;
         return await attempt(wrapped, false);

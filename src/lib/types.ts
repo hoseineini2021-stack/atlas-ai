@@ -1,5 +1,5 @@
 export type Role = 'user' | 'assistant';
-export type ThemeMode = 'system' | 'light' | 'dark';
+export type ThemeMode = 'atlas' | 'light' | 'dark';
 export type Language = 'en' | 'fa';
 
 /** A file or image attached to a user message (already compressed / minified). */
