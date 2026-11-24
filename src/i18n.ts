@@ -14,7 +14,7 @@ const en = {
   responseError: (status: number) => `The request failed with status ${status}.`, noResponse: 'No response was received.',
   streamUnavailable: 'Streaming responses are not available on this connection.', stopped: 'Response stopped.',
   connectionError: 'Could not connect to Atlas.', settingsSaved: 'Settings saved.',
-  appearance: 'Appearance', automatic: 'System', light: 'Light', dark: 'Dark', appearanceHint: 'System follows your phone’s appearance settings.',
+  appearance: 'Appearance', atlasTheme: 'ATLAS', automatic: 'System', light: 'Light', dark: 'Dark', appearanceHint: 'Choose the ATLAS purple, light, or dark theme.'
   language: 'Language', english: 'English', persian: 'فارسی', personalKey: 'Personal Atlas API key',
   keyHint: 'The key is stored only on this device and is not bundled into the app.', apiGuide: 'Atlas API key guide',
   streaming: 'Stream responses', streamingHint: 'Show the response as it arrives.',
@@ -58,7 +58,7 @@ const fa: Strings = {
   responseError: (status: number) => `دریافت پاسخ با خطای ${status} روبه‌رو شد.`, noResponse: 'پاسخی دریافت نشد.',
   streamUnavailable: 'امکان دریافت پاسخ پیوسته فراهم نیست.', stopped: 'پاسخ متوقف شد.',
   connectionError: 'ارتباط با Atlas برقرار نشد.', settingsSaved: 'تنظیمات ذخیره شد.',
-  appearance: 'حالت نمایش', automatic: 'خودکار', light: 'روشن', dark: 'تیره', appearanceHint: 'حالت خودکار با تنظیمات ظاهر گوشی هماهنگ می‌شود.',
+  appearance: 'حالت نمایش', atlasTheme: 'اطلس', automatic: 'خودکار', light: 'روشن', dark: 'تیره', appearanceHint: 'تم اطلس، روشن یا تیره را انتخاب کنید.'
   language: 'زبان', english: 'English', persian: 'فارسی', personalKey: 'کلید شخصی Atlas',
   keyHint: 'کلید فقط روی همین دستگاه نگه‌داری می‌شود و داخل برنامه قرار نمی‌گیرد.', apiGuide: 'راهنمای دریافت کلید Atlas',
   streaming: 'نمایش تدریجی پاسخ', streamingHint: 'پاسخ‌ها همان لحظه و بخش‌به‌بخش ظاهر شوند.',
