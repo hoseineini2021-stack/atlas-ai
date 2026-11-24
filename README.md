@@ -12,7 +12,7 @@ ATLAS AI is an AI-powered chat application built with React, TypeScript, Vite, a
 - SEARCH/REPLACE code edits with file saving and sharing
 - Smooth streaming responses and an adaptive interface
 
-## What's New in v1.5.3
+## What's New in v2.0.2
 
 | Feature | Description |
 | --- | --- |
