@@ -58,7 +58,7 @@ const fa: Strings = {
   responseError: (status: number) => `دریافت پاسخ با خطای ${status} روبه‌رو شد.`, noResponse: 'پاسخی دریافت نشد.',
   streamUnavailable: 'امکان دریافت پاسخ پیوسته فراهم نیست.', stopped: 'پاسخ متوقف شد.',
   connectionError: 'ارتباط با Atlas برقرار نشد.', settingsSaved: 'تنظیمات ذخیره شد.',
-  appearance: 'حالت نمایش', atlasTheme: 'اطلس', automatic: 'خودکار', light: 'روشن', dark: 'تیره', appearanceHint: 'تم اطلس، روشن یا تیره را انتخاب کنید.'
+  appearance: 'حالت نمایش', atlasTheme: 'اطلس', automatic: 'خودکار', light: 'روشن', dark: 'تیره', appearanceHint: 'تم اطلس، روشن یا تیره را انتخاب کنید.',
   language: 'زبان', english: 'English', persian: 'فارسی', personalKey: 'کلید شخصی Atlas',
   keyHint: 'کلید فقط روی همین دستگاه نگه‌داری می‌شود و داخل برنامه قرار نمی‌گیرد.', apiGuide: 'راهنمای دریافت کلید Atlas',
   streaming: 'نمایش تدریجی پاسخ', streamingHint: 'پاسخ‌ها همان لحظه و بخش‌به‌بخش ظاهر شوند.',
